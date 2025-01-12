@@ -5,7 +5,7 @@ from pycm import ConfusionMatrix
 
 LABELS = ['bug fix', 'refactoring', 'new feature']
 
-def run_becnhmark():
+def run_benchmark():
     labels_index = {
         label:index for index, label in enumerate(LABELS, start=1)
     }
