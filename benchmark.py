@@ -30,3 +30,6 @@ def run_becnhmark():
         print(f'{index}. {label}')
     cm = ConfusionMatrix(predict_vector=predict_labels_indices, actual_vector=actual_labels_indices)
     print(cm)
+
+if __name__ == '__main__':
+    run_benchmark()
