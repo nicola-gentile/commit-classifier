@@ -18,7 +18,7 @@ jobs:
       - name: Setup ollama
         run: |
           curl -fsSL https://ollama.com/install.sh | sh
-          ollama serve
+          nohup ollama serve &
           ollama pull llama3.1
 
       - name: Setup python
