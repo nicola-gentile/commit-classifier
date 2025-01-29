@@ -79,7 +79,7 @@ def main(repo_path: str):
             analysis_results.new_features_author = author
             analysis_results.new_features_commits = counter.new_features
     print(f'Author who fixed more bugs is {analysis_results.bug_fix_author} with {analysis_results.bug_fix_commits} commits')
-    print(f'Author who added more new features is {analysis_results.new_features_author} with {analysis_results.new_features_commits} commits\n')
+    print(f'Author who added more new features is {analysis_results.new_features_author} with {analysis_results.new_features_commits} commits')
 
 if __name__ == '__main__':
     repo_path = '.' if len(sys.argv) == 1 else sys.argv[1]
