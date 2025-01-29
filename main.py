@@ -1,17 +1,17 @@
 #!/bin/python3
 import sys
-from itertools import groupby, takewhile, accumulate
-from more_itertools import ilen
+from itertools import groupby
 from dataclasses import dataclass
-from typing import Iterable
+from typing import Iterable, List, Tuple
 import git
 import commit_classification as cc
+import csv
 
 def find_repo(repo_path: str):
     return git.Repo.init(repo_path)
 
 def find_commits(repo: git.Repo, branch: str='main'):
-    return git.iter_commit(repo.branches[branch])
+    return repo.iter_commits(repo.branches[branch])
 
 @dataclass
 class CommitClassCounter:
@@ -38,11 +38,17 @@ class CommitClassCounter:
     def total(self):
         return self.bug_fix + self.new_features + self.refactoring + self.other
 
-def group_commits(commits: Iterable[git.Commit]) -> CommitClassCounter:
+global_commit_counter = 0
+
+def count_commits_classes(commits: Iterable[git.Commit]) -> CommitClassCounter:
+    global global_commit_counter
     counter = CommitClassCounter.new()
     commit_messages = map(lambda c: c.message, commits)
     labels = cc.classify_commits_message(commit_messages)
     for label in labels:
+        global_commit_counter += 1
+        sys.stdout.write(f'\rEvaluated {global_commit_counter} commits')
+        sys.stdout.flush()
         counter.add(label)
     return counter
 
@@ -52,32 +58,51 @@ class AnalysisResult:
     bug_fix_commits: int
     new_features_author: str
     new_features_commits: int
-    done: bool
+
+def group_commits_by_actor(repo: git.Repo) -> List[Tuple[git.Actor, List[git.Commit]]]:
+    commits: Iterable[git.Commit] = find_commits(repo)
+    commits: List[git.Commit] = sorted(commits, key=lambda c: c.author.email)
+    authors: Iterable[(git.Actor, Iterable[git.Commit])] = groupby(commits, lambda c: c.author)
+    authors: List[Tuple[git.Actor, List[git.Commit]]] = list(map(lambda pair: (pair[0], list(pair[1])), authors))
+    return authors
 
 def main(repo_path: str):
     repo: git.Repo = find_repo(repo_path)
-    commits: Iterable[git.Commit] = find_commits(repo)
-    commits: [git.Commit] = sorted(commits, key=lambda c: c.author)
-    authors: Iterable[(git.Actor, Iterable[git.Commit])] = groupby(commits, lambda c: c.author)
-    authors: [(git.Actor, Iterable[git.Commit])] = sorted(authors, key=lambda pair: ilen(pair[1]))
-    authors: Iterable[(git.Actor, CommitClassCounter)] = map(lambda pair: (pair[0], group_commits(pair[1])), authors)
-    def acc_func(acc: AnalysisResult, item: (git.Actor, CommitClassCounter)):
-        author, counter = item
-        if acc.bug_fix_commits >= counter.total() and acc.new_features_commits >= counter.total():
-            acc.done = True
-            return acc
-        if acc.bug_fix_commits < counter.bug_fix:
-            acc.bug_fix_author = author
-            acc.bug_fix_commits = counter.bug_fix
-        if acc.new_features_commits < counter.new_features:
-            acc.new_features_author = author
-            acc.new_features_commits = counter.new_features
-        return acc
-    result = accumulate(authors, acc_func, initial=AnalysisResult('', 0, '', 0, False))
-    *_, result = takewhile(lambda res: not res.done, result)
-    print(f'Author who fixed more bugs is {result.bug_fix_author} with {result.bug_fix_commits} commits')
-    print(f'Author who added more new features is {result.new_features_author} with {result.new_features_commits} commits')
+    authors: List[Tuple[git.Actor, List[git.Commit]]] = group_commits_by_actor(repo)
+    authors.sort(key=lambda pair: len(pair[1]), reverse=True)
+    def classyfying_function(pair: Tuple[git.Actor, List[git.Commit]]):
+        author, commits = pair
+        return author, count_commits_classes(commits)
+    authors: Iterable[(git.Actor, CommitClassCounter)] = map(classyfying_function, authors)
+    analysis_results = AnalysisResult('',0,'',0)
+    with open('results.csv', 'w') as results_csv:
+
+        sys.stdout.write('author-name,bug-fix,new-features,refactoring\n')
+        sys.stdout.flush()
+        results = csv.DictWriter(results_csv, ['author-name','bug-fix','new-features','refactoring'],delimiter=',')
+        results.writeheader()
+        for author, counter in authors:
+            sys.stdout.write(f'\x1b[2K\r{author.name},{counter.bug_fix},{counter.new_features},{counter.refactoring}\n')
+            sys.stdout.write(f'\rEvaluated {global_commit_counter} commits')
+            sys.stdout.flush()
+            results.writerow({
+                'author-name':author.name,
+                'bug-fix':counter.bug_fix,
+                'new-features':counter.new_features,
+                'refactoring': counter.refactoring
+            })
+            if analysis_results.bug_fix_commits >= counter.total() and analysis_results.new_features_commits >= counter.total():
+                break
+            if analysis_results.bug_fix_commits < counter.bug_fix:
+                analysis_results.bug_fix_author = author
+                analysis_results.bug_fix_commits = counter.bug_fix
+            if analysis_results.new_features_commits < counter.new_features:
+                analysis_results.new_features_author = author
+                analysis_results.new_features_commits = counter.new_features
+    print(f'Author who fixed more bugs is {analysis_results.bug_fix_author} with {analysis_results.bug_fix_commits} commits')
+    print(f'Author who added more new features is {analysis_results.new_features_author} with {analysis_results.new_features_commits} commits')
+
 
 if __name__ == '__main__':
-    repo_path = '.' if len(sys.argv) > 1 else sys.argv[1]
+    repo_path = '.' if len(sys.argv) == 1 else sys.argv[1]
     main(repo_path)
