@@ -38,17 +38,11 @@ class CommitClassCounter:
     def total(self):
         return self.bug_fix + self.new_features + self.refactoring + self.other
 
-global_commit_counter = 0
-
 def count_commits_classes(commits: Iterable[git.Commit]) -> CommitClassCounter:
-    global global_commit_counter
     counter = CommitClassCounter.new()
     commit_messages = map(lambda c: c.message, commits)
     labels = cc.classify_commits_message(commit_messages)
     for label in labels:
-        global_commit_counter += 1
-        sys.stdout.write(f'\rEvaluated {global_commit_counter} commits')
-        sys.stdout.flush()
         counter.add(label)
     return counter
 
@@ -75,31 +69,17 @@ def main(repo_path: str):
         return author, count_commits_classes(commits)
     authors: Iterable[(git.Actor, CommitClassCounter)] = map(classyfying_function, authors)
     analysis_results = AnalysisResult('',0,'',0)
-    with open('results.csv', 'w') as results_csv:
-        sys.stdout.write('author-name,bug-fix,new-features,refactoring\n')
-        sys.stdout.flush()
-        results = csv.DictWriter(results_csv, ['author-name','bug-fix','new-features','refactoring'],delimiter=',')
-        results.writeheader()
-        for author, counter in authors:
-            sys.stdout.write(f'\x1b[2K\r{author.name},{counter.bug_fix},{counter.new_features},{counter.refactoring}\n')
-            sys.stdout.write(f'\rEvaluated {global_commit_counter} commits')
-            sys.stdout.flush()
-            results.writerow({
-                'author-name':author.name,
-                'bug-fix':counter.bug_fix,
-                'new-features':counter.new_features,
-                'refactoring': counter.refactoring
-            })
-            if analysis_results.bug_fix_commits >= counter.total() and analysis_results.new_features_commits >= counter.total():
-                break
-            if analysis_results.bug_fix_commits < counter.bug_fix:
-                analysis_results.bug_fix_author = author
-                analysis_results.bug_fix_commits = counter.bug_fix
-            if analysis_results.new_features_commits < counter.new_features:
-                analysis_results.new_features_author = author
-                analysis_results.new_features_commits = counter.new_features
-    sys.stdout.write(f'\rAuthor who fixed more bugs is {analysis_results.bug_fix_author} with {analysis_results.bug_fix_commits} commits\n')
-    sys.stdout.write(f'Author who added more new features is {analysis_results.new_features_author} with {analysis_results.new_features_commits} commits\n')
+    for author, counter in authors:
+        if analysis_results.bug_fix_commits >= counter.total() and analysis_results.new_features_commits >= counter.total():
+            break
+        if analysis_results.bug_fix_commits < counter.bug_fix:
+            analysis_results.bug_fix_author = author
+            analysis_results.bug_fix_commits = counter.bug_fix
+        if analysis_results.new_features_commits < counter.new_features:
+            analysis_results.new_features_author = author
+            analysis_results.new_features_commits = counter.new_features
+    print(f'Author who fixed more bugs is {analysis_results.bug_fix_author} with {analysis_results.bug_fix_commits} commits')
+    print(f'Author who added more new features is {analysis_results.new_features_author} with {analysis_results.new_features_commits} commits\n')
 
 if __name__ == '__main__':
     repo_path = '.' if len(sys.argv) == 1 else sys.argv[1]
