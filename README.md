@@ -158,3 +158,15 @@ Y(Youden index)                                                   0.7332        
 dInd(Distance index)                                              0.20494       0.26554       0.26385       
 sInd(Similarity index)                                            0.85509       0.81223       0.81343       
 ```
+To setup the project run the following commands in the linux shell.
+```bash
+git clone https://github.com/nicola-gentile/commit-classifier.git
+cd commit-classifier
+python3 -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
+```
+Command to run the tool
+```
+python3 main.py <local-repo-path>
+```
