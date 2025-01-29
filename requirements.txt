@@ -1,3 +1,2 @@
 ollama
 gitpython
-more_itertools

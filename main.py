@@ -76,7 +76,6 @@ def main(repo_path: str):
     authors: Iterable[(git.Actor, CommitClassCounter)] = map(classyfying_function, authors)
     analysis_results = AnalysisResult('',0,'',0)
     with open('results.csv', 'w') as results_csv:
-
         sys.stdout.write('author-name,bug-fix,new-features,refactoring\n')
         sys.stdout.flush()
         results = csv.DictWriter(results_csv, ['author-name','bug-fix','new-features','refactoring'],delimiter=',')
@@ -99,9 +98,8 @@ def main(repo_path: str):
             if analysis_results.new_features_commits < counter.new_features:
                 analysis_results.new_features_author = author
                 analysis_results.new_features_commits = counter.new_features
-    print(f'Author who fixed more bugs is {analysis_results.bug_fix_author} with {analysis_results.bug_fix_commits} commits')
-    print(f'Author who added more new features is {analysis_results.new_features_author} with {analysis_results.new_features_commits} commits')
-
+    sys.stdout.write(f'\rAuthor who fixed more bugs is {analysis_results.bug_fix_author} with {analysis_results.bug_fix_commits} commits\n')
+    sys.stdout.write(f'Author who added more new features is {analysis_results.new_features_author} with {analysis_results.new_features_commits} commits\n')
 
 if __name__ == '__main__':
     repo_path = '.' if len(sys.argv) == 1 else sys.argv[1]
